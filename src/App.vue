@@ -1,17 +1,32 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <Chart :data=loadData />
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import Chart from './components/Chart.vue'
+const csvPath = require("./assets/carsDE.csv")
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    Chart
+  },
+  data: function() {
+    return {
+      loadData: []
+    };
+  },
+  mounted() {
+    console.log("App loaded");
+    this.fetchData();
+  },
+  methods: {
+    async fetchData() {
+      let data = csvPath;
+      this.loadData = data;
+    }
   }
 }
 </script>
