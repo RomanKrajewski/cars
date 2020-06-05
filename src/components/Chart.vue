@@ -3,7 +3,10 @@
         <h1>{{ msg }}</h1>
         <div>
             <div id="chartComponent"></div>
-            <v-select style="width:20%; margin-left:auto; margin-right:0" :clearable=false v-model="selectedXAxes"
+            <v-select style="width:11em; margin-left:auto; margin-right:0"
+                      :clearable=false
+                      :searchable=false
+                      v-model="selectedXAxes"
                       v-on:input="updateChart"
                       :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
         </div>
