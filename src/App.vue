@@ -15,18 +15,11 @@ export default {
   },
   data: function() {
     return {
-      loadData: []
+      loadData: csvPath
     };
   },
   mounted() {
     console.log("App loaded");
-    this.fetchData();
-  },
-  methods: {
-    async fetchData() {
-      let data = csvPath;
-      this.loadData = data;
-    }
   }
 }
 </script>
@@ -39,5 +32,8 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+  max-width: 900px;
+  margin-left:auto;
+  margin-right:auto;
 }
 </style>

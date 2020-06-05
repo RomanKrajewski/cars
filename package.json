@@ -20,6 +20,7 @@
     "csv-loader": "^3.0.3",
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^6.2.2",
+    "vue-select": "^3.10.3",
     "vue-template-compiler": "^2.6.11"
   },
   "eslintConfig": {
