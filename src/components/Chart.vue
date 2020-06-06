@@ -92,11 +92,13 @@
                 return g.attr("transform", `translate(0,${this.height - this.margin.bottom})`)
                     .transition().duration(1000).ease(d3.easeLinear)
                     .call(d3.axisBottom(this.x).ticks(this.width / 80))
+                    .select(".domain").attr("stroke", "none")
             },
             yAxis(g) {
                 return g.attr("transform", `translate(${this.margin.left},0)`)
                     .transition().duration(2000)
                     .call(d3.axisLeft(this.y))
+                    .select(".domain").attr("stroke", "none")
             },
             generateChart() {
                 this.color = d3.scaleOrdinal(d3.schemeTableau10);
