@@ -2,6 +2,17 @@
     <div>
         <h1>{{ msg }}</h1>
         <div>
+            <v-select :clearable=false
+                      :multiple=true
+                      v-model="selectedManufacturers"
+                      v-on:input="updateChart"
+                      :options="notSelectedManufacturers"></v-select>
+            <v-select style="width:11em"
+                      :clearable=false
+                      :searchable=false
+                      v-model="selectedYAxes"
+                      v-on:input="updateChart"
+                      :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
             <div id="chartComponent"></div>
             <v-select style="width:11em; margin-left:auto; margin-right:0"
                       :clearable=false
@@ -35,10 +46,16 @@
                             manufacturer: car.Hersteller,
                             region: car.Herkunft,
                             x: Number(car[this.selectedXAxes]),
-                            y: Number(car.Verbrauch)
+                            y: Number(car[this.selectedYAxes])
                         }
                     })
-                    .filter(entry => !isNaN(entry.x) && !isNaN(entry.y))
+                    .filter(entry => !isNaN(entry.x) && !isNaN(entry.y) && this.selectedManufacturers.includes(entry.manufacturer))
+            },
+            manufacturerList: function() {
+                return [... new Set(this.data.map(car => car.Hersteller))]
+            },
+            notSelectedManufacturers: function() {
+                return this.manufacturerList.filter(e => !this.selectedManufacturers.includes(e))
             },
             x: function () {
                 return d3.scaleLinear()
@@ -56,7 +73,9 @@
                 msg: "🚗 🚙 🚓 🚕 🚙 🚓 🚗 🚕",
                 height: 600,
                 width: 800,
-                selectedXAxes: "Baujahr",
+                selectedXAxes: "PS",
+                selectedYAxes: "Verbrauch",
+                selectedManufacturers: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
                 color: Object,
                 shape: Object,
@@ -80,8 +99,8 @@
                     .call(d3.axisLeft(this.y))
             },
             generateChart() {
-                this.color = d3.scaleOrdinal().range([...Array(30).keys()].map(i => `hsl(${i * 12}, 100%, 60%)`));
-                this.shape = d3.scaleOrdinal(this.chartData.map(d => d.category), d3.symbols.map(s => d3.symbol().type(s)()));
+                this.color = d3.scaleOrdinal(d3.schemeTableau10);
+                this.shape = d3.scaleOrdinal(this.chartData.map(d => d.region), ["symbolSquare", "symbolTriangle", "symbolCircle"].map(s => d3.symbol().type(d3[s])));
                 this.componentDiv = d3.select("#chartComponent")
                 const svg = this.componentDiv
                     .append("svg")
@@ -102,6 +121,7 @@
                 this.tooltip.raise();
             },
             updateChart() {
+                this.color.domain(this.selectedManufacturers)
                 this.drawnYAxis.call(this.xAxis);
                 this.drawnXAxis.call(this.yAxis);
                 this.drawnGlyphs.selectAll("path")
@@ -114,20 +134,25 @@
                         const bb = this.tooltip.node().getBBox();
                         this.tooltip.attr("x", (this.x(d.x) - bb.width / 2)).attr("y", (this.y(d.y) - bb.height / 2));
                         this.tooltipRect.attr("x", (this.x(d.x) - bb.width * 0.5)).attr("y", (this.y(d.y) - bb.height * 1.25)).attr("width", bb.width).attr("height", bb.height);
-                        d3.select(d3.event.target).attr("stroke", "black").raise()
+                        d3.select(d3.event.target)
+                            .attr("stroke", "black").raise()
+                            .attr("d", d=> this.shape(d.region).size("100")())
                     })
                     .on("mouseout", () => {
                         this.tooltip.attr("visibility", "hidden")
                         this.tooltipRect.attr("visibility", "hidden")
-                        d3.select(d3.event.target).attr("stroke", "none")
+                        d3.select(d3.event.target)
+                            .attr("stroke", "none")
+                            .attr("d", d=> this.shape(d.region).size("30")())
                     })
                     .transition().duration(1000).ease(d3.easeCubic)
                     .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
-                    .attr("fill", d => this.color(d.manufacturer))
-                    .attr("d", d => this.shape(d.region));
+                    .attr("fill", d => this.color(this.selectedManufacturers.length <= 10 ? d.manufacturer : d.region))
+                    .attr("d", d => this.shape(d.region).size("30")());
             }
         },
         mounted() {
+            this.selectedManufacturers = this.manufacturerList
             this.generateChart();
             this.updateChart();
         }
