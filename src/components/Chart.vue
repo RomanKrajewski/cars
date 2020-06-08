@@ -11,18 +11,25 @@
                 <div style="width:100%; display:flex; flex-direction: column; padding-top:10px">
                     <input class="visHidden" v-for="region in regionList" :key="region" type="checkbox"
                            :id="`region_checkbox_${region}`" :value="region" v-model="selectedRegions">
-                    <label style="width:100%; display: flex;justify-content: center; margin-left:0;margin-right: 0; padding-left: 0; padding-right: 0" class="regionLabel noselect" v-for="region in regionList" :key="`${region}label`"
+                    <label style="width:100%; display: flex;justify-content: center; margin-left:0;margin-right: 0; padding-left: 0; padding-right: 0"
+                           class="regionLabel noselect" v-for="region in regionList" :key="`${region}label`"
                            :for="`region_checkbox_${region}`">{{region}}
-                    <svg viewBox="0 0 10 10" style="margin-left: 0.5em;align-self: center;" height="1em"><path></path></svg>
+                        <svg viewBox="0 0 10 10" style="margin-left: 0.5em;align-self: center;" height="1em">
+                            <path></path>
+                        </svg>
                     </label>
                 </div>
             </div>
             <div style="width:70%" id="chartComponent"/>
             <div style="display:flex;flex-direction: column; width:15%; padding-bottom: 2em">
-                <h3>Visualisierung CarsDE</h3>
-                <p v-if="!currentCar.Hersteller">Details on hover</p>
-                <div style="align-self: flex-start" v-for="key in detailKeys" :key="`car_detail_${key}`">
-                    <p style="margin: 0"><strong>{{key}}: </strong> {{ currentCar[key] }}</p>
+                <h2>Visualisierung CarsDE</h2>
+                <p class="like-label" v-if="!currentCar.Hersteller">Details on hover</p>
+                <div class="like-label" style="display: flex; flex-direction: column" v-else>
+                    <h2 style="margin-top:0; margin-bottom: 0">{{ `${capitalize(currentCar.Hersteller)}` }}</h2>
+                    <h3 style="margin-top:0; margin-bottom: 0.5em;"> {{`${capitalize(currentCar.Model)}` }} </h3>
+                    <div style="align-self: flex-start" v-for="key in detailKeys" :key="`car_detail_${key}`">
+                        <p style="margin: 0"><strong>{{ key }}: </strong> {{ currentCar[key] }}</p>
+                    </div>
                 </div>
                 <v-select style="width:100%; margin-bottom:0; margin-top:auto"
                           :clearable=false
@@ -35,8 +42,9 @@
         <div style="display:flex; flex-wrap:wrap; width:70%; align-self:center; padding-left:40px">
             <input class="visHidden" v-for="manufacturer in manufacturerList" :key="manufacturer" type="checkbox"
                    :id="`man_checkbox_${manufacturer}`" :value="manufacturer" v-model="selectedManufacturers">
-            <label class="manufacturerLabel noselect" v-for="manufacturer in manufacturerList" :key="`${manufacturer}label`"
-                   :for="`man_checkbox_${manufacturer}`">{{manufacturer}}</label>
+            <label class="manufacturerLabel noselect" v-for="manufacturer in manufacturerList"
+                   :key="`${manufacturer}label`"
+                   :for="`man_checkbox_${manufacturer}`">{{ capitalize(manufacturer) }}</label>
         </div>
     </div>
 </template>
@@ -55,7 +63,7 @@
             data: Array
         },
         computed: {
-            detailKeys: function(){
+            detailKeys: function () {
                 return Object.keys(this.currentCar).filter(e => !['Hersteller', 'Model'].includes(e))
             },
             chartData: function () {
@@ -99,7 +107,7 @@
                 selectedRegions: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
                 regionColor: Object,
-                currentCar: this.data[10],
+                currentCar: {},
                 shape: Object,
                 componentDiv: Object,
                 manufacturerColors: Object,
@@ -176,67 +184,70 @@
                 this.drawnGlyphs.selectAll("path")
                     .data(this.chartData, d => d.index)
                     .join(enter => enter.append("path")
-                        .on("mouseover", d => {
-                            this.currentCar = this.data[d.index]
-                            d3.select(d3.event.target)
-                                .attr("stroke", "black").raise()
-                                .transition().duration(100).ease(d3.easeBackOut.overshoot(3))
-                                .attr("d", d=> this.getShape(d).size("100")())
-                        })
-                        .on("mouseout", () => {
-                            this.currentCar = {}
-                            d3.select(d3.event.target)
-                                .transition().delay(50).duration(50).ease(d3.easeBackIn.overshoot(3))
-                                .attr("stroke", "none")
-                                .attr("d", d => this.getShape(d)())
-                        })
-                        .attr("d", d => this.getShape(d)())
-                        .attr("fill", d => this.getColor(d))
-                        .call(enter => enter
-                            .transition().duration(1000).ease(d3.easeCubic)
-                            .attrTween("transform", d => {
-                                return d3.interpolateString(`translate(0,${this.height})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
-                            }))
+                            .on("mouseover", d => {
+                                this.currentCar = this.data[d.index]
+                                d3.select(d3.event.target)
+                                    .attr("stroke", "black").raise()
+                                    .transition().duration(100).ease(d3.easeBackOut.overshoot(3))
+                                    .attr("d", d => this.getShape(d).size("100")())
+                            })
+                            .on("mouseout", () => {
+                                this.currentCar = {}
+                                d3.select(d3.event.target)
+                                    .transition().delay(50).duration(50).ease(d3.easeBackIn.overshoot(3))
+                                    .attr("stroke", "none")
+                                    .attr("d", d => this.getShape(d)())
+                            })
+                            .attr("d", d => this.getShape(d)())
+                            .attr("fill", d => this.getColor(d))
+                            .call(enter => enter
+                                .transition().duration(1000).ease(d3.easeCubic)
+                                .attrTween("transform", d => {
+                                    return d3.interpolateString(`translate(0,${this.height})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
+                                }))
                         ,
-                    update => update
-                        .attr("d", d => this.getShape(d)())
-                        .attr("fill", d => this.getColor(d)))
-                        .transition().duration(1000).ease(d3.easeCubic)
-                        .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
+                        update => update
+                            .attr("d", d => this.getShape(d)())
+                            .attr("fill", d => this.getColor(d)))
+                    .transition().duration(1000).ease(d3.easeCubic)
+                    .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
             },
             updateManufacturerLegend() {
                 d3.selectAll(".manufacturerLabel")
                     .datum((d, i, n) => {
-                        const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim())
+                        const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim().toLowerCase())
                         return this.getColor({manufacturer: car.Hersteller, region: car.Herkunft})
                     })
                     .each(function (d) {
                         const l = d3.hsl(d).l
-                        const textColor = l > 0.6 ? "#2c3e50" : "white"
+                        const textColor = l > 0.65 ? "#2c3e50" : "white"
                         d3.select(this)
                             .transition().duration(500)
                             .style("background-color", d)
                             .style("color", textColor)
                     })
             },
-            updateRegionLegend(){
+            updateRegionLegend() {
                 d3.selectAll(".regionLabel")
                     .datum((d, i, n) => {
                         const region = d3.select(n[i]).text().trim()
-                        if(!this.selectedRegions.includes(region)){
-                            return {shape: this.getShape({region:region}).size(0), color: "#ffffff"}
+                        if (!this.selectedRegions.includes(region)) {
+                            return {shape: this.getShape({region: region}).size(0), color: "#ffffff"}
                         }
-                        if(this.selectedManufacturers.length > this.manufacturerColorLimit) {
-                            return {shape:this.getShape({region:region}).size(40), color: this.regionColor(region)}
+                        if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
+                            return {shape: this.getShape({region: region}).size(40), color: this.regionColor(region)}
                         }
-                        return {shape:this.getShape({region:region}).size(40), color:"#2c3e50"}
+                        return {shape: this.getShape({region: region}).size(40), color: "#2c3e50"}
                     })
                     .each(function (d) {
                         const l = d3.hsl(d.color).l
-                        const textColor = l > 0.6 ? "#2c3e50" : "white"
+                        const textColor = l > 0.65 ? "#2c3e50" : "white"
+                        // const textColor = "white"
                         d3.select(this)
                             .selectAll("path")
-                            .datum(function(){return d})
+                            .datum(function () {
+                                return d
+                            })
                             .attr("d", d => d.shape())
                             .attr("fill", textColor)
                             .attr("transform", "translate(5,5)")
@@ -245,7 +256,7 @@
                             .style("color", textColor)
                     })
             },
-            updateRegions(){
+            updateRegions() {
                 this.updateRegionLegend()
                 this.updateChart()
             },
@@ -258,6 +269,10 @@
                 this.updateManufacturerLegend()
                 this.updateRegionLegend()
                 this.updateChart()
+            },
+            capitalize(string) {
+                const safeString = string.toString()
+                return safeString.charAt(0).toUpperCase() + safeString.slice(1);
             }
         },
         created() {
@@ -300,7 +315,13 @@
         position: absolute;
         width: 1px;
     }
-
+    .like-label{
+        box-sizing: border-box;
+        margin: 5px;
+        padding: 5px;
+        border: 1px solid gray;
+        border-radius: 4px;
+    }
     label {
         box-sizing: border-box;
         margin: 5px;
