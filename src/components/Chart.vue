@@ -119,7 +119,7 @@
             },
             yAxis(g) {
                 return g.attr("transform", `translate(${this.margin.left},0)`)
-                    .transition().duration(2000)
+                    .transition().duration(1000).ease(d3.easeLinear)
                     .call(d3.axisLeft(this.y))
                     .select(".domain").attr("stroke", "none")
             },
@@ -175,29 +175,38 @@
 
                 this.drawnGlyphs.selectAll("path")
                     .data(this.chartData, d => d.index)
-                    .join("path")
-                    .on("mouseover", d => {
-                        this.tooltip.attr("visibility", "visible")
-                        this.tooltipRect.attr("visibility", "visible")
-                        this.tooltip.text(`${this.data[d.index].Hersteller} ${this.data[d.index].Model}`);
-                        const bb = this.tooltip.node().getBBox();
-                        this.tooltip.attr("x", (this.x(d.x) - bb.width / 2)).attr("y", (this.y(d.y) - bb.height / 2));
-                        this.tooltipRect.attr("x", (this.x(d.x) - bb.width * 0.5)).attr("y", (this.y(d.y) - bb.height * 1.25)).attr("width", bb.width).attr("height", bb.height);
-                        d3.select(d3.event.target)
-                            .attr("stroke", "black").raise()
-                            .attr("d", d => this.getShape(d).size("100")())
-                    })
-                    .on("mouseout", () => {
-                        this.tooltip.attr("visibility", "hidden")
-                        this.tooltipRect.attr("visibility", "hidden")
-                        d3.select(d3.event.target)
-                            .attr("stroke", "none")
-                            .attr("d", d => this.getShape(d)())
-                    })
-                    .attr("d", d => this.getShape(d)())
-                    .transition().duration(1000).ease(d3.easeCubic)
-                    .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
-                    .attr("fill", d => this.getColor(d));
+                    .join(enter => enter.append("path")
+                        .on("mouseover", d => {
+                            this.tooltip.attr("visibility", "visible")
+                            this.tooltipRect.attr("visibility", "visible")
+                            this.tooltip.text(`${this.data[d.index].Hersteller} ${this.data[d.index].Model}`);
+                            const bb = this.tooltip.node().getBBox();
+                            this.tooltip.attr("x", (this.x(d.x) - bb.width / 2)).attr("y", (this.y(d.y) - bb.height / 2));
+                            this.tooltipRect.attr("x", (this.x(d.x) - bb.width * 0.5)).attr("y", (this.y(d.y) - bb.height * 1.25)).attr("width", bb.width).attr("height", bb.height);
+                            d3.select(d3.event.target)
+                                .attr("stroke", "black").raise()
+                                .attr("d", d => this.getShape(d).size("100")())
+                        })
+                        .on("mouseout", () => {
+                            this.tooltip.attr("visibility", "hidden")
+                            this.tooltipRect.attr("visibility", "hidden")
+                            d3.select(d3.event.target)
+                                .attr("stroke", "none")
+                                .attr("d", d => this.getShape(d)())
+                        })
+                        .attr("d", d => this.getShape(d)())
+                        .attr("fill", d => this.getColor(d))
+                        .call(enter => enter
+                            .transition().duration(1000).ease(d3.easeCubic)
+                            .attrTween("transform", d => {
+                                return d3.interpolateString(`translate(${this.x(0)},${this.y(0)})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
+                            }))
+                        ,
+                    update => update
+                        .attr("d", d => this.getShape(d)())
+                        .attr("fill", d => this.getColor(d)))
+                        .transition().duration(1000).ease(d3.easeCubic)
+                        .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
             },
             updateManufacturerLegend() {
                 d3.selectAll(".manufacturerLabel")
