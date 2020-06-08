@@ -18,8 +18,13 @@
                 </div>
             </div>
             <div style="width:70%" id="chartComponent"/>
-            <div style="display:flex;flex-direction: column-reverse; width:15%; padding-bottom: 2em">
-                <v-select style="width:100%;"
+            <div style="display:flex;flex-direction: column; width:15%; padding-bottom: 2em">
+                <h3>Visualisierung CarsDE</h3>
+                <p v-if="!currentCar.Hersteller">Details on hover</p>
+                <div style="align-self: flex-start" v-for="key in detailKeys" :key="`car_detail_${key}`">
+                    <p style="margin: 0"><strong>{{key}}: </strong> {{ currentCar[key] }}</p>
+                </div>
+                <v-select style="width:100%; margin-bottom:0; margin-top:auto"
                           :clearable=false
                           :searchable=false
                           v-model="selectedXAxes"
@@ -50,6 +55,9 @@
             data: Array
         },
         computed: {
+            detailKeys: function(){
+                return Object.keys(this.currentCar).filter(e => !['Hersteller', 'Model'].includes(e))
+            },
             chartData: function () {
                 return this.data
                     .map((car, i) => {
@@ -82,7 +90,7 @@
         },
         data() {
             return {
-                height: 600,
+                height: 500,
                 width: 800,
                 manufacturerColorLimit: 10,
                 selectedXAxes: "PS",
@@ -91,12 +99,11 @@
                 selectedRegions: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
                 regionColor: Object,
+                currentCar: this.data[10],
                 shape: Object,
                 componentDiv: Object,
                 manufacturerColors: Object,
                 unusedManufacturerColors: Object,
-                tooltip: Object,
-                tooltipRect: Object,
                 drawnXAxis: Object,
                 drawnYAxis: Object,
                 drawnGlyphs: Object,
@@ -131,19 +138,12 @@
                     .append("svg")
                     .attr("viewBox", [0, 0, this.width, this.height]);
 
-                this.tooltipRect = svg.append("rect")
-                    .attr("fill", "white")
-                    .attr("stroke", "black")
-                this.tooltip = svg.append("text")
                 this.drawnXAxis = svg.append("g")
                 this.drawnYAxis = svg.append("g")
                 this.drawnGlyphs = svg.append("g")
                     .attr("stroke-width", 0.5)
                     .attr("font-family", "sans-serif")
                     .attr("font-size", 50)
-
-                this.tooltipRect.raise();
-                this.tooltip.raise();
             },
             getShape(d) {
                 if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
@@ -177,20 +177,16 @@
                     .data(this.chartData, d => d.index)
                     .join(enter => enter.append("path")
                         .on("mouseover", d => {
-                            this.tooltip.attr("visibility", "visible")
-                            this.tooltipRect.attr("visibility", "visible")
-                            this.tooltip.text(`${this.data[d.index].Hersteller} ${this.data[d.index].Model}`);
-                            const bb = this.tooltip.node().getBBox();
-                            this.tooltip.attr("x", (this.x(d.x) - bb.width / 2)).attr("y", (this.y(d.y) - bb.height / 2));
-                            this.tooltipRect.attr("x", (this.x(d.x) - bb.width * 0.5)).attr("y", (this.y(d.y) - bb.height * 1.25)).attr("width", bb.width).attr("height", bb.height);
+                            this.currentCar = this.data[d.index]
                             d3.select(d3.event.target)
                                 .attr("stroke", "black").raise()
-                                .attr("d", d => this.getShape(d).size("100")())
+                                .transition().duration(100).ease(d3.easeBackOut.overshoot(3))
+                                .attr("d", d=> this.getShape(d).size("100")())
                         })
                         .on("mouseout", () => {
-                            this.tooltip.attr("visibility", "hidden")
-                            this.tooltipRect.attr("visibility", "hidden")
+                            this.currentCar = {}
                             d3.select(d3.event.target)
+                                .transition().delay(50).duration(50).ease(d3.easeBackIn.overshoot(3))
                                 .attr("stroke", "none")
                                 .attr("d", d => this.getShape(d)())
                         })
@@ -199,7 +195,7 @@
                         .call(enter => enter
                             .transition().duration(1000).ease(d3.easeCubic)
                             .attrTween("transform", d => {
-                                return d3.interpolateString(`translate(${this.x(0)},${this.y(0)})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
+                                return d3.interpolateString(`translate(0,${this.height})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
                             }))
                         ,
                     update => update
