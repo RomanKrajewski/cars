@@ -1,30 +1,30 @@
 <template>
-    <div style="display:flex; align-items:stretch">
-        <div style="width:15%; display:flex; flex-direction:column; align-items:flex-start">
-            <v-select style="width:100%"
-                      :clearable=false
-                      :searchable=false
-                      v-model="selectedYAxes"
-                      v-on:input="updateChart"
-                      :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
-            <v-select id="manufacturerSelectBox"
-                      style="display: flex"
-                      :clearable=false
-                      :multiple=true
-                      v-model="selectedManufacturers"
-                      v-on:input="updateManufacturers"
-                      v-on:search:blur="updateLegend"
-                      :options="notSelectedManufacturers">
-            </v-select>
+    <div style="display: flex; flex-direction: column">
+        <div style="display:flex; align-items:stretch">
+            <div style="width:15%; display:flex; flex-direction:column; align-items:flex-start">
+                <v-select style="width:100%"
+                          :clearable=false
+                          :searchable=false
+                          v-model="selectedYAxes"
+                          v-on:input="updateChart"
+                          :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
+
+            </div>
+            <div style="width:70%" id="chartComponent"/>
+            <div style="display:flex;flex-direction: column-reverse; width:15%; padding-bottom: 2em">
+                <v-select style="width:100%;"
+                          :clearable=false
+                          :searchable=false
+                          v-model="selectedXAxes"
+                          v-on:input="updateChart"
+                          :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
+            </div>
         </div>
-        <div id="chartComponent"></div>
-        <div style="display:flex;flex-direction: column-reverse; width:15%; padding-bottom: 2em">
-            <v-select style="width:100%;"
-                      :clearable=false
-                      :searchable=false
-                      v-model="selectedXAxes"
-                      v-on:input="updateChart"
-                      :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
+        <div style="display:flex; flex-wrap:wrap; width:70%; align-self:center; padding-left:40px">
+            <input class="visHidden" v-for="manufacturer in manufacturerList" :key="manufacturer" type="checkbox"
+                   :id="`man_checkbox_${manufacturer}`" :value="manufacturer" v-model="selectedManufacturers">
+            <label class="manufacturerLabel noselect" v-for="manufacturer in manufacturerList" :key="`${manufacturer}label`"
+                   :for="`man_checkbox_${manufacturer}`">{{manufacturer}}</label>
         </div>
     </div>
 </template>
@@ -94,6 +94,11 @@
                 drawnGlyphs: Object,
             }
         },
+        watch: {
+            selectedManufacturers: function () {
+                this.updateManufacturers()
+            }
+        },
         methods: {
             xAxis(g) {
                 return g.attr("transform", `translate(0,${this.height - this.margin.bottom})`)
@@ -137,6 +142,9 @@
                 }
             },
             getColor(d) {
+                if (!this.selectedManufacturers.includes(d.manufacturer)) {
+                    return "#ffffff"
+                }
                 if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
                     return this.regionColor(d.region)
                 } else {
@@ -181,14 +189,20 @@
                     .attr("fill", d => this.getColor(d));
                 this.updateLegend()
             },
-            updateLegend(){
-                d3.selectAll("#manufacturerSelectBox .vs__selected")
-                    .datum((d,i,n) => {const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim())
-                        return this.getColor({manufacturer: car.Hersteller, region:car.Herkunft})
+            updateLegend() {
+                d3.selectAll("label ")
+                    .datum((d, i, n) => {
+                        const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim())
+                        return this.getColor({manufacturer: car.Hersteller, region: car.Herkunft})
                     })
-                    .each(function(d) {d3.select(this)
-                        .transition().duration(1000)
-                        .style("background-color", d)})
+                    .each(function (d) {
+                        const l = d3.hsl(d).l
+                        const textColor = l > 0. ? "#2c3e50" : "white"
+                        d3.select(this)
+                            .transition().duration(1000)
+                            .style("background-color", d)
+                            .style("color", textColor)
+                    })
             },
             updateManufacturers() {
                 let unselectedManufacturer = Array.from(this.manufacturerColors.keys()).filter(e => !this.selectedManufacturers.includes(e))[0]
@@ -199,7 +213,7 @@
                 this.updateChart()
             }
         },
-        created(){
+        created() {
             this.manufacturerColors = new Map()
             this.unusedManufacturerColors = d3.schemeTableau10
 
@@ -214,10 +228,6 @@
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-    #chartComponent {
-        width: 70%;
-    }
-
     ul {
         list-style-type: none;
         padding: 0;
@@ -231,4 +241,34 @@
     a {
         color: #42b983;
     }
+
+    .visHidden {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+    }
+
+    label {
+        margin: 5px;
+        padding: 5px;
+        border: 1px solid gray;
+        border-radius: 4px;
+    }
+
+    .noselect {
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none;
+        /* Non-prefixed version, currently
+                                         supported by Chrome and Opera */
+    }
+
 </style>
