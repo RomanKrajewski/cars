@@ -204,13 +204,16 @@
                                 .transition().duration(1000).ease(d3.easeCubic)
                                 .attrTween("transform", d => {
                                     return d3.interpolateString(`translate(0,${this.height})`, `translate(${this.x(d.x)},${this.y(d.y)})`);
-                                }))
-                        ,
+                                })),
                         update => update
                             .attr("d", d => this.getShape(d)())
-                            .attr("fill", d => this.getColor(d)))
-                    .transition().duration(1000).ease(d3.easeCubic)
-                    .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
+                            .transition().duration(1000).ease(d3.easeCubic)
+                            .attr("fill", d => this.getColor(d))
+                            .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`),
+                        exit => exit
+                            .call(exit => exit.transition().duration(500).ease(d3.easeCubic).attr("transform", `translate(${this.width}, 0)`)
+                                .remove())
+                    );
             },
             updateManufacturerLegend() {
                 d3.selectAll(".manufacturerLabel")
@@ -274,14 +277,16 @@
                 const safeString = string.toString()
                 return safeString.charAt(0).toUpperCase() + safeString.slice(1);
             }
-        },
+        }
+        ,
         created() {
             this.manufacturerColors = new Map()
             this.unusedManufacturerColors = d3.schemeCategory10
 
             this.selectedManufacturers = this.manufacturerList.slice(0, 11)
             this.selectedRegions = this.regionList
-        },
+        }
+        ,
         mounted() {
             this.generateChart();
             this.updateChart();
@@ -315,13 +320,15 @@
         position: absolute;
         width: 1px;
     }
-    .like-label{
+
+    .like-label {
         box-sizing: border-box;
         margin: 5px;
         padding: 5px;
         border: 1px solid gray;
         border-radius: 4px;
     }
+
     label {
         box-sizing: border-box;
         margin: 5px;
