@@ -8,7 +8,14 @@
                           v-model="selectedYAxes"
                           v-on:input="updateChart"
                           :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
-
+                <div style="width:100%; display:flex; flex-direction: column; padding-top:10px">
+                    <input class="visHidden" v-for="region in regionList" :key="region" type="checkbox"
+                           :id="`region_checkbox_${region}`" :value="region" v-model="selectedRegions">
+                    <label style="width:100%; display: flex;justify-content: center; margin-left:0;margin-right: 0; padding-left: 0; padding-right: 0" class="regionLabel noselect" v-for="region in regionList" :key="`${region}label`"
+                           :for="`region_checkbox_${region}`">{{region}}
+                    <svg viewBox="0 0 10 10" style="margin-left: 0.5em;align-self: center;" height="1em"><path></path></svg>
+                    </label>
+                </div>
             </div>
             <div style="width:70%" id="chartComponent"/>
             <div style="display:flex;flex-direction: column-reverse; width:15%; padding-bottom: 2em">
@@ -54,13 +61,13 @@
                             y: Number(car[this.selectedYAxes])
                         }
                     })
-                    .filter(entry => !isNaN(entry.x) && !isNaN(entry.y) && this.selectedManufacturers.includes(entry.manufacturer))
+                    .filter(entry => !isNaN(entry.x) && !isNaN(entry.y) && this.selectedManufacturers.includes(entry.manufacturer) && this.selectedRegions.includes(entry.region))
             },
             manufacturerList: function () {
                 return [...new Set(this.data.map(car => car.Hersteller))].sort()
             },
-            notSelectedManufacturers: function () {
-                return this.manufacturerList.filter(e => !this.selectedManufacturers.includes(e))
+            regionList: function () {
+                return [...new Set(this.data.map(car => car.Herkunft))].sort()
             },
             x: function () {
                 return d3.scaleLinear()
@@ -81,6 +88,7 @@
                 selectedXAxes: "PS",
                 selectedYAxes: "Verbrauch",
                 selectedManufacturers: [],
+                selectedRegions: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
                 regionColor: Object,
                 shape: Object,
@@ -97,6 +105,9 @@
         watch: {
             selectedManufacturers: function () {
                 this.updateManufacturers()
+            },
+            selectedRegions: function () {
+                this.updateRegions()
             }
         },
         methods: {
@@ -136,7 +147,7 @@
             },
             getShape(d) {
                 if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
-                    return d3.symbol().type(d3["symbolCircle"]).size("10")
+                    return d3.symbol().type(d3["symbolCircle"]).size("20")
                 } else {
                     return this.shape(d.region).size("30")
                 }
@@ -187,22 +198,51 @@
                     .transition().duration(1000).ease(d3.easeCubic)
                     .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
                     .attr("fill", d => this.getColor(d));
-                this.updateLegend()
             },
-            updateLegend() {
-                d3.selectAll("label ")
+            updateManufacturerLegend() {
+                d3.selectAll(".manufacturerLabel")
                     .datum((d, i, n) => {
                         const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim())
                         return this.getColor({manufacturer: car.Hersteller, region: car.Herkunft})
                     })
                     .each(function (d) {
                         const l = d3.hsl(d).l
-                        const textColor = l > 0. ? "#2c3e50" : "white"
+                        const textColor = l > 0.6 ? "#2c3e50" : "white"
                         d3.select(this)
-                            .transition().duration(1000)
+                            .transition().duration(500)
                             .style("background-color", d)
                             .style("color", textColor)
                     })
+            },
+            updateRegionLegend(){
+                d3.selectAll(".regionLabel")
+                    .datum((d, i, n) => {
+                        const region = d3.select(n[i]).text().trim()
+                        if(!this.selectedRegions.includes(region)){
+                            return {shape: this.getShape({region:region}).size(0), color: "#ffffff"}
+                        }
+                        if(this.selectedManufacturers.length > this.manufacturerColorLimit) {
+                            return {shape:this.getShape({region:region}).size(40), color: this.regionColor(region)}
+                        }
+                        return {shape:this.getShape({region:region}).size(40), color:"#2c3e50"}
+                    })
+                    .each(function (d) {
+                        const l = d3.hsl(d.color).l
+                        const textColor = l > 0.6 ? "#2c3e50" : "white"
+                        d3.select(this)
+                            .selectAll("path")
+                            .datum(function(){return d})
+                            .attr("d", d => d.shape())
+                            .attr("fill", textColor)
+                            .attr("transform", "translate(5,5)")
+                        d3.select(this).transition().duration(500)
+                            .style("background-color", d.color)
+                            .style("color", textColor)
+                    })
+            },
+            updateRegions(){
+                this.updateRegionLegend()
+                this.updateChart()
             },
             updateManufacturers() {
                 let unselectedManufacturer = Array.from(this.manufacturerColors.keys()).filter(e => !this.selectedManufacturers.includes(e))[0]
@@ -210,14 +250,17 @@
                     this.unusedManufacturerColors.push(this.manufacturerColors.get(unselectedManufacturer))
                     this.manufacturerColors.delete(unselectedManufacturer)
                 }
+                this.updateManufacturerLegend()
+                this.updateRegionLegend()
                 this.updateChart()
             }
         },
         created() {
             this.manufacturerColors = new Map()
-            this.unusedManufacturerColors = d3.schemeTableau10
+            this.unusedManufacturerColors = d3.schemeCategory10
 
             this.selectedManufacturers = this.manufacturerList.slice(0, 11)
+            this.selectedRegions = this.regionList
         },
         mounted() {
             this.generateChart();
@@ -254,6 +297,7 @@
     }
 
     label {
+        box-sizing: border-box;
         margin: 5px;
         padding: 5px;
         border: 1px solid gray;
