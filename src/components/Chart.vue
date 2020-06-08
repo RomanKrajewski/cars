@@ -7,22 +7,24 @@
                       v-model="selectedYAxes"
                       v-on:input="updateChart"
                       :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
-            <v-select style="display: flex"
+            <v-select id="manufacturerSelectBox"
+                      style="display: flex"
                       :clearable=false
                       :multiple=true
                       v-model="selectedManufacturers"
                       v-on:input="updateManufacturers"
+                      v-on:search:blur="updateLegend"
                       :options="notSelectedManufacturers">
             </v-select>
         </div>
         <div id="chartComponent"></div>
         <div style="display:flex;flex-direction: column-reverse; width:15%; padding-bottom: 2em">
-        <v-select style="width:100%;"
-                  :clearable=false
-                  :searchable=false
-                  v-model="selectedXAxes"
-                  v-on:input="updateChart"
-                  :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
+            <v-select style="width:100%;"
+                      :clearable=false
+                      :searchable=false
+                      v-model="selectedXAxes"
+                      v-on:input="updateChart"
+                      :options="['Verbrauch','Zylinder','Hubraum','PS','Gewicht','Beschleunigung','Baujahr']"></v-select>
         </div>
     </div>
 </template>
@@ -55,7 +57,7 @@
                     .filter(entry => !isNaN(entry.x) && !isNaN(entry.y) && this.selectedManufacturers.includes(entry.manufacturer))
             },
             manufacturerList: function () {
-                return [...new Set(this.data.map(car => car.Hersteller))]
+                return [...new Set(this.data.map(car => car.Hersteller))].sort()
             },
             notSelectedManufacturers: function () {
                 return this.manufacturerList.filter(e => !this.selectedManufacturers.includes(e))
@@ -80,9 +82,11 @@
                 selectedYAxes: "Verbrauch",
                 selectedManufacturers: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
-                color: Object,
+                regionColor: Object,
                 shape: Object,
                 componentDiv: Object,
+                manufacturerColors: Object,
+                unusedManufacturerColors: Object,
                 tooltip: Object,
                 tooltipRect: Object,
                 drawnXAxis: Object,
@@ -104,7 +108,6 @@
                     .select(".domain").attr("stroke", "none")
             },
             generateChart() {
-                this.manufacturerColor = d3.scaleOrdinal(d3.schemeTableau10);
                 this.regionColor = d3.scaleOrdinal(d3.schemeTableau10);
                 this.shape = d3.scaleOrdinal(this.chartData.map(d => d.region), ["symbolSquare", "symbolTriangle", "symbolCircle"].map(s => d3.symbol().type(d3[s])));
                 this.componentDiv = d3.select("#chartComponent")
@@ -137,13 +140,20 @@
                 if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
                     return this.regionColor(d.region)
                 } else {
-                    return this.manufacturerColor(d.manufacturer)
+                    if (this.manufacturerColors.has(d.manufacturer)) {
+                        return this.manufacturerColors.get(d.manufacturer)
+                    } else {
+                        let newColor = this.unusedManufacturerColors.pop()
+                        this.manufacturerColors.set(d.manufacturer, newColor)
+                        return newColor;
+                    }
                 }
             },
             updateChart() {
 
                 this.drawnYAxis.call(this.xAxis);
                 this.drawnXAxis.call(this.yAxis);
+
                 this.drawnGlyphs.selectAll("path")
                     .data(this.chartData, d => d.index)
                     .join("path")
@@ -169,14 +179,33 @@
                     .transition().duration(1000).ease(d3.easeCubic)
                     .attr("transform", d => `translate(${this.x(d.x)},${this.y(d.y)})`)
                     .attr("fill", d => this.getColor(d));
+                this.updateLegend()
+            },
+            updateLegend(){
+                d3.selectAll("#manufacturerSelectBox .vs__selected")
+                    .datum((d,i,n) => {const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim())
+                        return this.getColor({manufacturer: car.Hersteller, region:car.Herkunft})
+                    })
+                    .each(function(d) {d3.select(this)
+                        .transition().duration(1000)
+                        .style("background-color", d)})
             },
             updateManufacturers() {
-                this.manufacturerColor.domain(this.manufacturerColor.domain().filter(e => this.selectedManufacturers.includes(e)))
+                let unselectedManufacturer = Array.from(this.manufacturerColors.keys()).filter(e => !this.selectedManufacturers.includes(e))[0]
+                if (this.manufacturerColors.has(unselectedManufacturer)) {
+                    this.unusedManufacturerColors.push(this.manufacturerColors.get(unselectedManufacturer))
+                    this.manufacturerColors.delete(unselectedManufacturer)
+                }
                 this.updateChart()
             }
         },
+        created(){
+            this.manufacturerColors = new Map()
+            this.unusedManufacturerColors = d3.schemeTableau10
+
+            this.selectedManufacturers = this.manufacturerList.slice(0, 11)
+        },
         mounted() {
-            this.selectedManufacturers = this.manufacturerList
             this.generateChart();
             this.updateChart();
         }
