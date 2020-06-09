@@ -309,7 +309,7 @@
             this.manufacturerColors = new Map()
             this.unusedManufacturerColors = d3.schemeCategory10
 
-            this.selectedManufacturers = this.manufacturerList.slice(0, 11)
+            this.selectedManufacturers = this.manufacturerList.slice(0, 10)
             this.selectedRegions = this.regionList
         }
         ,
