@@ -24,11 +24,12 @@
             <div style="display:flex;flex-direction: column; width:15%; padding-bottom: 2em">
                 <h2>Visualisierung CarsDE</h2>
                 <p class="like-label" v-if="!currentCar.Hersteller">Details on hover</p>
-                <div class="like-label" style="display: flex; flex-direction: column" v-else>
+                <div class="like-label" style="display: flex; flex-direction: column; align-items: stretch" v-else>
                     <h2 style="margin-top:0; margin-bottom: 0">{{ `${capitalize(currentCar.Hersteller)}` }}</h2>
                     <h3 style="margin-top:0; margin-bottom: 0.5em;"> {{`${capitalize(currentCar.Model)}` }} </h3>
-                    <div style="align-self: flex-start" v-for="key in detailKeys" :key="`car_detail_${key}`">
-                        <p style="margin: 0"><strong>{{ key }}: </strong> {{ currentCar[key] }}</p>
+                    <div style="display: flex; flex-wrap:wrap; justify-content: space-between; margin-bottom: 3px" v-for="key in detailKeys" :key="`car_detail_${key}`">
+                        <div><strong>{{ key }}: </strong></div>
+                        <div style="margin: 0 0 0 auto"> {{ `${currentCar[key]} ${detailPaneUnits[key]}` }}</div>
                     </div>
                 </div>
                 <v-select style="width:100%; margin-bottom:0; margin-top:auto"
@@ -85,6 +86,14 @@
             regionList: function () {
                 return [...new Set(this.data.map(car => car.Herkunft))].sort()
             },
+            detailPaneUnits: function(){
+                let detailPaneUnits = Object.assign({}, this.units)
+                detailPaneUnits["PS"] = ""
+                detailPaneUnits["Baujahr"] = ""
+                detailPaneUnits["Zylinder"] = ""
+                detailPaneUnits["Herkunft"] = ""
+                return detailPaneUnits
+            },
             x: function () {
                 return d3.scaleLinear()
                     .domain(d3.extent(this.chartData, d => d.x)).nice()
@@ -107,7 +116,7 @@
                 selectedRegions: [],
                 margin: {top: 25, right: 20, bottom: 35, left: 40},
                 regionColor: Object,
-                currentCar: {},
+                currentCar: this.data[3],
                 shape: Object,
                 componentDiv: Object,
                 manufacturerColors: Object,
@@ -115,6 +124,7 @@
                 drawnXAxis: Object,
                 drawnYAxis: Object,
                 drawnGlyphs: Object,
+                units: {Verbrauch: 'l/100km', Zylinder: 'Stück', Hubraum: 'ccm', PS: 'PS', Gewicht: 'kg', Beschleunigung: 's (0-60mph)', Baujahr: 'Jahr'}
             }
         },
         watch: {
@@ -122,21 +132,38 @@
                 this.updateManufacturers()
             },
             selectedRegions: function () {
-                this.updateRegions()
+                this.updateRegionLegend()
+                this.updateChart()
             }
         },
         methods: {
             xAxis(g) {
-                return g.attr("transform", `translate(0,${this.height - this.margin.bottom})`)
+                g.attr("transform", `translate(0,${this.height - this.margin.bottom})`)
                     .transition().duration(1000).ease(d3.easeLinear)
                     .call(d3.axisBottom(this.x).ticks(this.width / 80))
-                    .select(".domain").attr("stroke", "none")
+                    .select(".domain")
+                    .attr("stroke", "none")
+
+                    return g.select("text")
+                        .attr("x", this.width)
+                        .attr("y", this.margin.bottom - 4)
+                        .attr("fill", "currentColor")
+                        .attr("text-anchor", "end")
+                        .text(this.units[this.selectedXAxes])
             },
             yAxis(g) {
-                return g.attr("transform", `translate(${this.margin.left},0)`)
+                g.attr("transform", `translate(${this.margin.left},0)`)
                     .transition().duration(1000).ease(d3.easeLinear)
                     .call(d3.axisLeft(this.y))
                     .select(".domain").attr("stroke", "none")
+
+                return g.select("text")
+                    .attr("x", - this.margin.left + 10)
+                    .attr("y", 10)
+                    .attr("fill", "currentColor")
+                    .attr("text-anchor", "start")
+                    .text(this.units[this.selectedYAxes])
+
             },
             generateChart() {
                 this.regionColor = d3.scaleOrdinal(d3.schemeTableau10);
@@ -147,7 +174,11 @@
                     .attr("viewBox", [0, 0, this.width, this.height]);
 
                 this.drawnXAxis = svg.append("g")
+                this.drawnXAxis.append("text")
+
                 this.drawnYAxis = svg.append("g")
+                this.drawnYAxis.append("text")
+
                 this.drawnGlyphs = svg.append("g")
                     .attr("stroke-width", 0.5)
                     .attr("font-family", "sans-serif")
@@ -161,9 +192,6 @@
                 }
             },
             getColor(d) {
-                if (!this.selectedManufacturers.includes(d.manufacturer)) {
-                    return "#ffffff"
-                }
                 if (this.selectedManufacturers.length > this.manufacturerColorLimit) {
                     return this.regionColor(d.region)
                 } else {
@@ -219,7 +247,9 @@
                 d3.selectAll(".manufacturerLabel")
                     .datum((d, i, n) => {
                         const car = this.data.find(e => e.Hersteller === d3.select(n[i]).text().trim().toLowerCase())
-                        return this.getColor({manufacturer: car.Hersteller, region: car.Herkunft})
+                        if (this.selectedManufacturers.includes(car.Hersteller)) {
+                            return this.getColor({manufacturer: car.Hersteller, region: car.Herkunft})
+                        } else return "white"
                     })
                     .each(function (d) {
                         const l = d3.hsl(d).l
@@ -258,10 +288,6 @@
                             .style("background-color", d.color)
                             .style("color", textColor)
                     })
-            },
-            updateRegions() {
-                this.updateRegionLegend()
-                this.updateChart()
             },
             updateManufacturers() {
                 let unselectedManufacturer = Array.from(this.manufacturerColors.keys()).filter(e => !this.selectedManufacturers.includes(e))[0]
